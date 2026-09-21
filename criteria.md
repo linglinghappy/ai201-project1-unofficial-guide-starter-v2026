@@ -26,6 +26,9 @@ contains the answer.
 <!-- e.g. "One of my questions is about a topic only two documents mention, so
      I expect that one to be hard." -->
 
+ Every test question has a post that holds the answer, and my posts are short (178 to 549 characters), so one chunk holds a whole answer. I allow one miss because many posts share a template. For example, every dorm has a laundry post that looks alike, so the wrong building can rank first.
+    
+
 ---
 
 ## 2. Every answer names a source
@@ -37,6 +40,8 @@ Every answer the system produces names at least one source document.
      or what would have to go wrong for it not to be? -->
 
 ---
+The prompt tells the model to name the file, and every chunk sent to it is labelled with its filename. So naming a source should be easy. I want all 5, not 4, because an answer with no source cannot be checked. It would fail if the model ignores the instruction.
+
 
 ## 3. The relevance gate stops out-of-corpus questions
 
@@ -52,6 +57,7 @@ in at least 4 of 5 tries.
 **Why this target:**
 <!-- What did your distances look like when you set the cutoff in Milestone 4?
      Was there a clean gap, or did the two groups overlap? -->
+My good questions had a best distance of 0.234 to 0.377. My out-of-scope questions had 0.825 to 0.934. The gap is clean, so I expect a pass. I allow one miss (4 of 5) in case a question lands near the cutoff.
 
 ---
 
