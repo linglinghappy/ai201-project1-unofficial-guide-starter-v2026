@@ -116,14 +116,32 @@ Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building
 <!-- One complete question and answer, pasted as text, with the source line
      visible. Milestone 4. -->
 
-**Question:**
+**Question:** What is the workload of course CS 340?
 
 **Answer:**
 
 ```
+The workload for CS 340 is 6 hours a week early on, and 15 hours a week in the last three weeks when the project lands. It is front-loaded, making the first month heavier than the rest. (Source: course_cs_340_workload.txt)
 ```
 
-**My relevance cutoff:**
+**My relevance cutoff:** 0.45
+
+I ran 5 test questions and the 5 `OUT_OF_SCOPE` questions.
+
+- Questions the corpus covers: best distance 0.234 to 0.377.
+- Questions it does not cover: best distance 0.825 to 0.934.
+- The two groups do not overlap. The gap is 0.377 to 0.825.
+
+I set the cutoff at 0.45. It is above my highest good distance. The cost is a small margin (0.073). A badly worded question could be refused by mistake.
+
+The cutoff cannot catch near misses. I asked about things that do not exist:
+
+- "CS 999" had distance 0.331.
+- "Happy Hall" had distance 0.337.
+
+Both are lower than my real job-hours question (0.377), so the gate let them through. The grounding instruction stopped both. The model said it did not have enough information. I tested only two cases, so I did not change `GROUNDING_INSTRUCTION`.
+
+I set `TOP_K` to 3. The right chunk was in the top 3 for all 5 test questions. The cost: CS 340's main page (rank 4 for Q1) is no longer retrieved.
 
 <!-- The number you set in config.py, and how you got there.
 
@@ -136,7 +154,16 @@ Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-|  |  |  |
+| What is the workload of course CS 340? | Yes | 0.288 |
+| How long is the wait at the Halden Hall | Yes | 0.234 |
+| How much does one dryer cycle cost in the Morrow House laundry? | Yes | 0.265 |
+| What is the maximum number of hours I can work an on-campus job per week | Yes | 0.377 |
+| How long does it take to walk from Fenwick Court to central campu? | Yes | 0.313 |
+| What is the capital of Mongolia? | No | 0.825 |
+| How do I change the oil in a diesel engine? | No | 0.934 |
+| Who won the 1994 World Cup? | No | 0.886 |
+| What is the recommended dosage of ibuprofen for a headache? | No | 0.844 |
+| How do I write a for loop in Rust? | No | 0.896 |
 
 ## How I Used AI
 
@@ -149,9 +176,9 @@ Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building
 
      Milestone 5. -->
 
-**1.**
+**1.** I asked Claude to revise my criteria #4 and #5. It suggested "no chunk is shorter than 250 characters" for #4. Before I used it, we checked my real chunk lengths. 17 of my 88 posts are under 250 characters, and they are still complete answers (one is 178 characters). A 250 minimum would have failed good chunks. I changed criterion #4 to: in 10 sampled chunks, at least 8 read as a complete thought, no chunk is shorter than 100 characters, and every chunk keeps its title line.
 
-**2.**
+**2.** When I set the cutoff, Claude first said a lower cutoff would also catch questions about campus topics my posts do not cover. I tested that with a course and a dorm that do not exist ("CS 999" and "Happy Hall"). Their distances were 0.331 and 0.337, both lower than my real job-hours question (0.377), so no cutoff could separate them. The grounding instruction stopped both instead. I dropped that claim, wrote the result in the README, and kept the grounding instruction as it was.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
