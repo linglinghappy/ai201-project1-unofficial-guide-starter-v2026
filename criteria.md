@@ -56,7 +56,9 @@ in at least 4 of 5 tries.
 ---
 
 ## 4. Something about your chunks
-
+In 10 randomly sampled chunks, at least 8 read as a complete thought that can
+answer a question without the chunk before or after it. No chunk is shorter than
+100 characters, and every chunk keeps its title line.
 <!-- YOU WRITE THIS ONE.
 
      How would you know if your chunks were the right size? Name something
@@ -69,16 +71,14 @@ in at least 4 of 5 tries.
        - "No chunk is shorter than 200 characters, since anything below that
           in my corpus turned out to be a heading with no content under it." -->
 
-
-
 **Why this target:**
-
+ My posts are 178-549 characters, and 17 of the 88 are under 250 but are still complete answers (e.g. a 178-character exam summary). So a 250 floor would fail good chunks; 100 only catches a bare heading. Each post is one chunk, so the real risk is a chunk that mixes topics or a "Re:" reply that loses its title, which is why I sample-read instead of only counting characters.
 
 
 ---
 
 ## 5. Your choice
-
+For each of my 5 test questions, every number in the system's answer (minutes, dollars, hours) appears verbatim in at least one of the retrieved chunks passed to the model. All 5 of 5 questions must pass. Any number that appears only in the answer counts as a failure.
 <!-- YOU WRITE THIS ONE TOO.
 
      Pick something you actually care about getting right. It could be about
@@ -90,7 +90,7 @@ in at least 4 of 5 tries.
 
 
 **Why this target:**
-
+All 5 of my test questions have numeric answers. If the number isn't in the chunks, the model made it up.
 
 
 ---

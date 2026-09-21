@@ -97,7 +97,23 @@ def split_documents(documents: list[Document]) -> list[Chunk]:
       - Would splitting on paragraph breaks keep more thoughts intact than
         splitting on a character count?
     """
-    return fallback_split(documents)
+    # campus_life posts run 178-549 characters, so one post is one chunk. The
+    # title line stays inside the text, which is what lets a "Re:" follow-up
+    # still say what it is following up on.
+    chunks: list[Chunk] = []
+    for doc in documents:
+        text = doc.text.strip()
+        if not text:
+            continue
+        if len(text) > config.CHUNK_SIZE:
+            # Nothing in campus_life gets here. A longer document would make a
+            # chunk that matches every question a little, so cut it the old way.
+            chunks.extend(fallback_split([doc]))
+            continue
+        chunks.append(
+            Chunk(text=text, source=doc.source, index=0, produced_by="chunker.py::split_documents")
+        )
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:
