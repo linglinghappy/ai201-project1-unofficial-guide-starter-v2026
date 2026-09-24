@@ -296,6 +296,8 @@ Fenwick   answer: "It takes 18 minutes"
 
 **Note on `scorer.py::judge`.** It checks whether the answer contains the `expects` phrase, and it scored 4 of 5 in every run. CS 340 failed all three times even though all three answers were correct. My `expects` phrase was "6 hours weekly early, 15 hours in the last three weeks", and the model never writes it word for word. That is a false fail from the substring test, not a wrong answer.
 
+**Limits** All five questions have numeric answers in a single chunk, so these results show the system handles single-fact lookups. They say nothing about questions that combine posts or summarize opinions. The substring scorer can also false-pass: "8 minutes" matches inside "18 minutes".
+
 
 
 ## Verdicts
@@ -311,11 +313,11 @@ Fenwick   answer: "It takes 18 minutes"
 
 | # | Criterion | Verdict | How I decided |
 |---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
-| 4 |  |  |  |
-| 5 |  |  |  |
+| 1 | Retrieved chunk contains the answer | MET | In all 3 runs the file holding the answer (e.g. `course_cs_340_workload.txt`) was among the 3 retrieved for all 5 questions, above the 4/5 target. The CS 340 fail from `judge()` is not a miss here: the right chunk was retrieved and the answer was correct, only worded differently from my `expects` phrase. |
+| 2 | Every answer names a source | MET | All 15 answers to my test questions (5 × 3 runs) named a file, and it was the file holding the answer. I did not count the gate's refusals, which have no chunks to cite. |
+| 3 | Gate stops out-of-corpus questions | MET | The gate refused all 5 `OUT_OF_SCOPE` questions (target 4/5). Their distances (0.825–0.934) were far above the 0.45 cutoff, so none came close. It does not catch near misses like "CS 999" (0.331); the grounding instruction handles those. |
+| 4 | Sampled chunks are complete thoughts, ≥100 chars, title kept | MET | I read 10 sampled chunks: all keep their title and are at least 178 characters. I counted BIOL 160 ("I lived here" in a course post) and the Verrill Street follow-up ("Adding to what people have said…") as borderline, so strictly it's 8/10, exactly the target. |
+| 5 | Every number in the answer appears in the chunks | MET | Every number in all 15 answers (6, 15, 8, 1.25, 20, 18) appears verbatim in a retrieved chunk. The run log stores only filenames, so I rebuilt the chunk text with `store.py::search`, which returns the same chunks every time. |
 
 ## Diagnoses
 
