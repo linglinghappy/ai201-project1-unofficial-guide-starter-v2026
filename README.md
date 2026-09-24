@@ -216,6 +216,87 @@ I set `TOP_K` to 3. The right chunk was in the top 3 for all 5 test questions. T
 <!-- Underneath, paste the REAL output for each criterion from one of your
      runs — the actual text your system produced, not a description of it.
      Name the file and function that produced it. -->
+The three runs were real re-runs: `run_eval.py::run_once` calls `answer_from_chunks(..., cache=False)`, the terminal reported 15 model calls (5 questions × 3 runs), and the answer wording differs between runs (see CS 340 below). Criteria 1, 3 and 4 test retrieval and chunking, which are deterministic, so the same number goes in all three columns.
+
+**Criterion 1: Retrieved chunk contains the answer.** From `store.py::search`, top-k 3 (results/run_2026-09-23_1940_before.md):
+
+```
+What is the workload of course CS 340?
+- Sources retrieved: course_cs_210_workload.txt, course_cs_340_exams.txt, course_cs_340_workload.txt
+How long is the lunch wait at the Halden Hall
+- Sources retrieved: dining_halden_hall.txt, dining_halden_hall_followup.txt, dining_pellew_dining_hall_followup.txt
+How much does one dryer cycle cost in the Morrow House laundry?
+- Sources retrieved: housing_aldridge_hall_laundry.txt, housing_morrow_house_laundry.txt, housing_old_brewhouse_laundry.txt
+What is the maximum number of hours I can work an on-campus job per week
+- Sources retrieved: course_phys_130_workload.txt, course_stat_150_workload.txt, money_jobs.txt
+How long does it take to walk from Fenwick Court to central campu?
+- Sources retrieved: housing_fenwick_court.txt, transit_shuttle.txt, transit_walking.txt
+```
+
+The file holding the answer is retrieved for all 5 questions, in all 3 runs.
+
+**Criterion 2: Every answer names a source.** From `generate.py::answer_from_chunks`, run 1:
+
+```
+The workload for CS 340 is 6 hours a week early on, and 15 hours a week in the last three weeks when the project lands. It is front-loaded, making the first month heavier than the rest.
+Source: `course_cs_340_workload.txt`
+
+The wait time at Halden Hall is rarely more than 8 minutes, even at noon.
+Sources: `dining_halden_hall.txt` and `dining_halden_hall_followup.txt`
+
+One dryer cycle in the Morrow House laundry costs $1.25 (housing_morrow_house_laundry.txt).
+
+The maximum number of hours you can work an on-campus job is 20 hours a week during the term (Source: money_jobs.txt).
+
+It takes 18 minutes to walk from Fenwick Court to central campus.
+Source: `transit_walking.txt` (also mentioned in `housing_fenwick_court.txt`).
+```
+
+**Criterion 3: Gate stops out-of-corpus questions.** From `run_eval.py::check_out_of_scope`, cutoff 0.45:
+
+```
+refused  (best distance 0.825)  What is the capital of Mongolia?
+refused  (best distance 0.934)  How do I change the oil in a diesel engine?
+refused  (best distance 0.886)  Who won the 1994 World Cup?
+refused  (best distance 0.844)  What is the recommended dosage of ibuprofen for a headache?
+refused  (best distance 0.896)  How do I write a for loop in Rust?
+-> gate refused 5 of 5
+```
+
+**Criterion 4: Sampled chunks.** From `chunker.py::split_documents`: 88 posts → 88 chunks, shortest 178 characters. Two of the 10 I sampled:
+
+```
+On the meal plan changes
+
+You can change your meal plan tier once, in the first ten days of the semester. After that it's locked. Downgrading refunds the difference to your student account; upgrading bills you immediately.
+```
+
+```
+Laundry in Morrow House
+
+Machines take $1.50 wash, $1.25 dry, coin or card. There are eight washers and six dryers for the building, which is the wrong ratio and means the dryers back up on Sunday evenings.
+
+Best time to do laundry here is Tuesday or Wednesday morning. Sunday after 6pm you will wait.
+```
+
+**Criterion 5: Numbers in the answer appear in the chunks.** Answer from `generate.py::answer_from_chunks` next to the chunk text from `store.py::search`:
+
+```
+CS 340    answer: "6 hours a week early on ... 15 hours a week in the last three weeks"
+          chunk:  "6 hours a week early, 15 in the last three weeks when the project lands."
+Halden    answer: "rarely more than 8 minutes"
+          chunk:  "Wait times: rarely more than 8 minutes, even at noon."
+Morrow    answer: "costs $1.25"
+          chunk:  "Machines take $1.50 wash, $1.25 dry, coin or card."
+Job hours answer: "20 hours a week during the term"
+          chunk:  "Maximum is 20 hours a week during term."
+Fenwick   answer: "It takes 18 minutes"
+          chunk:  "Fenwick Court to central campus: 18 minutes."
+```
+
+**Note on `scorer.py::judge`.** It checks whether the answer contains the `expects` phrase, and it scored 4 of 5 in every run. CS 340 failed all three times even though all three answers were correct. My `expects` phrase was "6 hours weekly early, 15 hours in the last three weeks", and the model never writes it word for word. That is a false fail from the substring test, not a wrong answer.
+
+
 
 ## Verdicts
 
