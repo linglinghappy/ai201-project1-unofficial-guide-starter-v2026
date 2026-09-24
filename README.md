@@ -338,6 +338,32 @@ Fenwick   answer: "It takes 18 minutes"
      low, and which one you'd tighten and to what.
 
      Milestone 3. -->
+**No miss.** All five criteria were met in all three runs.
+
+**Were my targets set low?** Yes, for criteria 1 and 3.
+
+- Criterion 1 (target 4 of 5): Each post is one chunk. Each answer is one number in one post. So a miss was unlikely. I allowed one miss that my setup made almost impossible.
+- Criterion 3 (target 4 of 5): I set this target after I saw the distances. My out-of-scope questions scored 0.825 to 0.934. My cutoff is 0.45. Questions about Mongolia or diesel engines are easy to refuse. The target could not really fail.
+- Criterion 4 was the closest. [___ your count, e.g. "I counted 8 of 10, exactly the target."]
+
+**Near-miss: my corpus is templated.** Stage: embedding and retrieval.
+
+Posts of the same type use almost the same words. Only the name and the numbers change. For example, every course workload post says "People keep asking so…" and "It's front-loaded…". Every laundry post says "eight washers and six dryers… wrong ratio".
+
+The embedding mostly captures the shared words. So posts about different things end up very close:
+
+- CS 340 workload: 0.288. CS 210 workload (wrong course): 0.300. The gap is only 0.012.
+- Morrow House laundry: 0.265. Old Brewhouse laundry (wrong building): 0.341.
+
+The same problem affects the gate. Distance measures the topic, not whether the thing exists. "CS 999" (0.331) and "Happy Hall" (0.337) do not exist. But they scored closer than my real job-hours question (0.377). So the gate let them through. The grounding instruction stopped them, not the gate.
+
+This is one problem, not three. My questions passed because each one names the course or building clearly. But the margins were small.
+
+**What I would tighten: criterion 3.**
+
+New version: "When I ask 5 questions about courses, dorms, or dining halls that do not exist, the system says 'I don't have enough information' in at least 4 of 5."
+
+Why: My current out-of-scope questions are too far from my corpus to be a real test. Questions about things that do not exist are the real weakness. The gate cannot stop them, because they score as close as real questions.
 
 ## The Improvement
 
