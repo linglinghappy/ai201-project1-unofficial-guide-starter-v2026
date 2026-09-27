@@ -344,7 +344,8 @@ Fenwick   answer: "It takes 18 minutes"
 
 - Criterion 1 (target 4 of 5): Each post is one chunk. Each answer is one number in one post. So a miss was unlikely. I allowed one miss that my setup made almost impossible.
 - Criterion 3 (target 4 of 5): I set this target after I saw the distances. My out-of-scope questions scored 0.825 to 0.934. My cutoff is 0.45. Questions about Mongolia or diesel engines are easy to refuse. The target could not really fail.
-- Criterion 4 was the closest. [___ your count, e.g. "I counted 8 of 10, exactly the target."]
+- Criterion 4 was the closest. I counted 8 of 10, exactly the target. BIOL 160 and the Verrill Street follow-up were borderline.
+
 
 **Near-miss: my corpus is templated.** Stage: embedding and retrieval.
 
