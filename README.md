@@ -210,7 +210,7 @@ I set `TOP_K` to 3. The right chunk was in the top 3 for all 5 test questions. T
 | 1. Retrieved chunk contains the answer | 4 of 5 | 5 of 5 | 5 of 5 | 5 of 5 | MET |
 | 2. Every answer names a source | 5 of 5 | 5 of 5 | 5 of 5 | 5 of 5 | MET |
 | 3. Gate stops out-of-corpus questions | 4 of 5 | 5 of 5 | 5 of 5 | 5 of 5 | MET |
-| 4. Sampled chunks are complete thoughts, ≥100 chars, title kept | 8 of 10 | 10 of 10 | 10 of 10 | 10 of 10 | MET |
+| 4. Sampled chunks are complete thoughts, ≥100 chars, title kept | 8 of 10 | 8 of 10 | 8 of 10 | 8 of 10 | MET |
 | 5. Every number in the answer appears in the retrieved chunks | 5 of 5 | 5 of 5 | 5 of 5 | 5 of 5 | MET |
 
 <!-- Underneath, paste the REAL output for each criterion from one of your
@@ -368,9 +368,9 @@ Why: My current out-of-scope questions are too far from my corpus to be a real t
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** I added BM25 keyword search next to semantic search in `store.py::search`. The two rankings are combined with Reciprocal Rank Fusion (`store.py::_fuse`, k = 60). It is switched on by `HYBRID = True` in `config.py`. Each chunk keeps its cosine distance, so the gate still uses the same 0.45 cutoff.
 
-**Why I picked it:**
+**Why I picked it:** My diagnosis found that templated posts hide the course or building name from the embedding, and BM25 gives weight to rare exact words like "Morrow" or "340".
 
 <!-- Connect it to a specific diagnosis above in one sentence. If you can't,
      you picked a fix because it sounded impressive. -->
@@ -382,13 +382,87 @@ Why: My current out-of-scope questions are too far from my corpus to be a real t
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5 of 5 | 5 of 5 | 5 of 5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5 of 5 | 5 of 5 | 5 of 5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5 of 5 | 5 of 5 | 5 of 5 | MET |
+| 4. Sampled chunks are complete thoughts, ≥100 chars, title kept | 8 of 10 | 8 of 10 | 8 of 10 | 8 of 10 | MET |
+| 5. Every number in the answer appears in the retrieved chunks | 5 of 5 | 5 of 5 | 5 of 5 | 5 of 5 | MET |
 
-**Did it help?**
+Run log: `results/run_2026-09-27_2336_after.md`, produced by `run_eval.py::main`. top-k 3, cutoff 0.45, 3 runs, caching off, `HYBRID = True`.
+
+Criterion 4 did not change because the chunking did not change. `scorer.py::judge` gave 4 of 5 again. CS 340 is still a false fail: the answer is correct but worded differently from my `expects` phrase.
+
+**Criterion 1.** From `store.py::search` (hybrid). Each question retrieved the same chunks in all 3 runs:
+
+```
+What is the workload of course CS 340?
+- Sources retrieved: course_cs_210_workload.txt, course_cs_340_exams.txt, course_cs_340_workload.txt
+How long is the lunch wait at the Halden Hall
+- Sources retrieved: dining_halden_hall.txt, dining_halden_hall_followup.txt, dining_pellew_dining_hall_followup.txt
+How much does one dryer cycle cost in the Morrow House laundry?
+- Sources retrieved: housing_morrow_house.txt, housing_morrow_house_laundry.txt, housing_tamsin_court_laundry.txt
+What is the maximum number of hours I can work an on-campus job per week
+- Sources retrieved: admin_campus_jobs_and_financial_aid.txt, money_jobs.txt, study_group_rooms.txt
+How long does it take to walk from Fenwick Court to central campu?
+- Sources retrieved: housing_fenwick_court.txt, transit_shuttle.txt, transit_walking.txt
+```
+
+**Criterion 2.** From `generate.py::answer_from_chunks`, run 1. All 15 answers name a file:
+
+```
+The workload for CS 340 is 6 hours a week early in the semester, increasing to 15 hours a week during the last three weeks when the project lands. This workload is front-loaded, making the first month heavier than the rest.
+Source: `course_cs_340_workload.txt`
+
+The wait time at Halden Hall is rarely more than 8 minutes, even at noon (dining_halden_hall.txt and dining_halden_hall_followup.txt).
+
+One dryer cycle in the Morrow House laundry costs $1.25.
+Source: `housing_morrow_house_laundry.txt` (also mentioned in `housing_morrow_house.txt`).
+
+The maximum is 20 hours a week during the term.
+Source: money_jobs.txt
+
+It takes about 18 minutes on foot to walk from Fenwick Court to central campus (sourced from `transit_walking.txt` and `housing_fenwick_court.txt`).
+```
+
+**Criterion 3.** From `run_eval.py::check_out_of_scope`, cutoff 0.45:
+
+```
+refused  (best distance 0.869)  What is the capital of Mongolia?
+refused  (best distance 0.934)  How do I change the oil in a diesel engine?
+refused  (best distance 0.886)  Who won the 1994 World Cup?
+refused  (best distance 0.860)  What is the recommended dosage of ibuprofen for a headache?
+refused  (best distance 0.900)  How do I write a for loop in Rust?
+-> gate refused 5 of 5
+```
+
+**Criterion 5.** Numbers in each answer compared with the retrieved chunks:
+
+```
+CS 340        6, 15   chunk: "6 hours a week early, 15 in the last three weeks when the project lands."
+Halden Hall   8       chunk: "Wait times: rarely more than 8 minutes, even at noon."
+Morrow House  1.25    chunk: "Machines take $1.50 wash, $1.25 dry, coin or card."
+On-campus job 20      chunk: "Maximum is 20 hours a week during term."
+Fenwick Court 18      chunk: "Fenwick Court to central campus: 18 minutes."
+missing from chunks: none, in all 3 runs
+```
+
+**Did it help?** Partly.
+
+The five criteria did not change. They were already at the top before the change, so they could not go higher.
+
+The retrieved chunks got better for 2 of 5 questions:
+
+| Question | Before (semantic only) | After (hybrid) |
+|---|---|---|
+| Morrow laundry | morrow_house_laundry, aldridge_hall_laundry, old_brewhouse_laundry | morrow_house_laundry, **morrow_house**, tamsin_court_laundry |
+| Job hours | money_jobs, phys_130_workload, stat_150_workload | money_jobs, **admin_campus_jobs_and_financial_aid**, study_group_rooms |
+| CS 340, Halden Hall, Fenwick Court | — | no change |
+
+For the laundry question, one wrong building was replaced by the right one. For the job question, two unrelated course posts were replaced by a post about campus jobs. Chunks about the right topic went from 9 of 15 to 11 of 15.
+
+It did not fix the example from my diagnosis. For CS 340, `course_cs_210_workload.txt` (a different course) is still retrieved. The words "workload", "course" and "cs" match both posts, so "340" alone was not enough.
+
+Side effect: the gate's best distance went up for 3 out-of-scope questions (Mongolia 0.825 → 0.869, ibuprofen 0.844 → 0.860, Rust 0.896 → 0.900). The gate only sees the top 3 chunks, and hybrid can push the closest chunk out of the top 3. For Mongolia, `course_hist_118_exams.txt` (0.825) was replaced by `winter_gear.txt` (0.974). This did not change any result, and my five real questions kept the same best distance. But it means the gate is not fully independent of this change: a real question could lose its closest chunk and be refused.
 
 <!-- Say plainly whether it did, and how you know. If it made things worse,
      say that — a change that backfired, honestly reported, earns full credit
