@@ -180,6 +180,11 @@ I set `TOP_K` to 3. The right chunk was in the top 3 for all 5 test questions. T
 
 **2.** When I set the cutoff, Claude first said a lower cutoff would also catch questions about campus topics my posts do not cover. I tested that with a course and a dorm that do not exist ("CS 999" and "Happy Hall"). Their distances were 0.331 and 0.337, both lower than my real job-hours question (0.377), so no cutoff could separate them. The grounding instruction stopped both instead. I dropped that claim, wrote the result in the README, and kept the grounding instruction as it was.
 
+**3.** 3. I asked Claude to explain BM25 and hybrid search. It said semantic search matches meaning, BM25 matches exact words and weighs rare ones like "340" heavily, and hybrid combines both. It predicted hybrid would push the wrong course (course_cs_210_workload.txt) out of my CS 340 results. I tested it before trusting it. The prediction was wrong: CS 340's top 3 did not change, because "workload", "course" and "cs" match both posts. Hybrid only helped the laundry and job questions. I reported that in "Did it help?" instead of claiming the fix worked.
+
+**4.** When writing scorer.py::judge, my last line was (answer or "".lower). Claude pointed out the parenthesis was in the wrong place: the answer was never lowercased, and an empty answer would crash with a TypeError.
+
+
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
      claims earns nothing.
@@ -450,6 +455,14 @@ missing from chunks: none, in all 3 runs
 
 The five criteria did not change. They were already at the top before the change, so they could not go higher.
 
+| Criterion | Target | Before (runs 1/2/3) | After (runs 1/2/3) |
+|---|---|---|---|
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5, 5, 5 | 5, 5, 5 |
+| 2. Every answer names a source | 5 of 5 | 5, 5, 5 | 5, 5, 5 |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5, 5, 5 | 5, 5, 5 |
+| 4. Sampled chunks are complete thoughts | 8 of 10 | 8, 8, 8 | 8, 8, 8 |
+| 5. Numbers in the answer appear in the chunks | 5 of 5 | 5, 5, 5 | 5, 5, 5 |
+
 The retrieved chunks got better for 2 of 5 questions:
 
 | Question | Before (semantic only) | After (hybrid) |
@@ -481,9 +494,31 @@ Side effect: the gate's best distance went up for 3 out-of-scope questions (Mong
 
      Milestone 5. -->
 
+No criterion is missed after the fix. All five are met before and after. But that is because some targets were safe, not because nothing is broken. Four problems are left.
+
+**1. The gate lets made-up campus questions through.** "CS 999" (0.331) and "Happy Hall" (0.337) score closer than my real job-hours question (0.377). The gate lets them through, and only the grounding instruction stops them. The tightened criterion 3 from my Diagnoses would fail today.
+- What I would do: before answering, check that the course or building named in the question appears in at least one retrieved chunk. If it does not, refuse.
+- Why I stopped: fixing this needs another full before/after run, and this unit allowed one change, which I used on hybrid search.
+
+**2. CS 340 still retrieves the wrong course.** `course_cs_210_workload.txt` is in the top 3 before and after hybrid search. Both workload posts share "workload", "course" and "cs", so "340" alone is not enough.
+- What I would do: store the course code in each chunk's metadata and filter on it when the question names a course.
+- Why I stopped: fixing this needs another full before/after run.
+
+**3. The scorer is wrong in both directions.** `scorer.py::judge` failed CS 340 in all 6 runs, even though every answer was correct. It can also false-pass: "8 minutes" matches inside "18 minutes".
+- What I would do: match whole numbers only, and check each number in `expects` on its own.
+- Why I stopped: changing the scorer changes every pass/fail, so it needs another full before/after run to compare fairly.
+
+**4. Hybrid search moved the gate's distances.** The gate only sees the top 3 chunks, and hybrid can push the closest chunk out. Mongolia went from 0.825 to 0.869. No result changed, but a real question could lose its closest chunk and be refused.
+- What I would do: compute the gate's distance from the semantic top 3, before fusion.
+- Why I stopped: fixing this needs another full before/after run.
+
 ## What I'd Do Differently
 
 <!-- Knowing what you know now — which of your five criteria would you write
      differently, and why?
 
      Milestone 5. -->
+
+**Criterion 3.** I would test the gate with made-up campus questions, like "What is the workload of CS 450?" or "How noisy is Birchwood Hall?", instead of the capital of Mongolia or Rust. My current questions are so far from my corpus that the gate could not fail. I also set the target after I saw the distances. The real weakness is questions that sound like my corpus but ask about things that do not exist.
+
+**Criterion 2.** I would write "Every answer to an in-corpus question names the file that contains the answer." "Every answer the system produces" was unclear, because refusals have no source to name. It also only checked that a source was named, not that it was the right one.
