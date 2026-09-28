@@ -18,6 +18,7 @@ rest of the project if they were wrong:
 """
 
 import os
+import re
 import shutil
 from dataclasses import dataclass
 
@@ -28,6 +29,7 @@ from dataclasses import dataclass
 os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 
 import chromadb  # noqa: E402
+from rank_bm25 import BM25Okapi  # noqa: E402
 
 import config
 from chunker import Chunk
@@ -134,6 +136,26 @@ def _client():
     )
 
 
+_bm25_cache: dict = {}
+
+
+def tokenize(text: str) -> list[str]:
+    # Keeps "1.25" whole: split into "1" and "25" it would match every post.
+    return re.findall(r"[a-z0-9]+(?:\.[0-9]+)?", text.lower())
+
+
+def _bm25_index(corpus: str | None = None, variant: str = "default"):
+    name = config.collection_name(corpus, variant)
+    if name in _bm25_cache:
+        return _bm25_cache[name]
+
+    stored = _client().get_collection(name).get(include=["documents", "metadatas"])
+    bm25 = BM25Okapi([tokenize(doc) for doc in stored["documents"]])
+
+    _bm25_cache[name] = (bm25, stored["ids"], stored["documents"], stored["metadatas"])
+    return _bm25_cache[name]
+
+
 def build_index(
     chunks: list[Chunk],
     corpus: str | None = None,
@@ -148,6 +170,7 @@ def build_index(
     and starting over.
     """
     name = config.collection_name(corpus, variant)
+    _bm25_cache.pop(name, None)
     client = _client()
 
     try:
@@ -178,6 +201,9 @@ def build_index(
     return len(chunks)
 
 
+RRF_K = 60
+
+
 def search(
     question: str,
     top_k: int | None = None,
@@ -187,7 +213,8 @@ def search(
     """
     Retrieve the chunks closest in meaning to a question.
 
-    Returns them nearest-first, each with its distance.
+    With config.HYBRID on, the order comes from fusing semantic and BM25
+    ranks, but each Result still carries its cosine distance for the gate.
     """
     top_k = top_k or config.TOP_K
     name = config.collection_name(corpus, variant)
@@ -199,10 +226,9 @@ def search(
             f"No index called '{name}'. Run `python app.py index` first."
         ) from exc
 
-    raw = collection.query(
-        query_embeddings=embed([question]),
-        n_results=min(top_k, collection.count()),
-    )
+    # Hybrid needs every chunk's cosine distance, not just the top few.
+    n = collection.count() if config.HYBRID else min(top_k, collection.count())
+    raw = collection.query(query_embeddings=embed([question]), n_results=n)
 
     results: list[Result] = []
     for text, meta, distance in zip(
@@ -217,7 +243,30 @@ def search(
                 produced_by=str(meta.get("produced_by", "unknown")),
             )
         )
-    return results
+
+    if not config.HYBRID:
+        return results
+    return _fuse(question, raw["ids"][0], results, top_k, corpus, variant)
+
+
+def _fuse(question, semantic_ids, semantic_results, top_k, corpus, variant):
+    bm25, bm25_ids, _, _ = _bm25_index(corpus, variant)
+    scores = bm25.get_scores(tokenize(question))
+
+    # A chunk sharing no words with the question gets no BM25 rank at all;
+    # ranking the zeros would hand out points in arbitrary order.
+    matched = [i for i in range(len(scores)) if scores[i] > 0]
+    bm25_order = [bm25_ids[i] for i in sorted(matched, key=lambda i: scores[i], reverse=True)]
+
+    fused = dict.fromkeys(semantic_ids, 0.0)
+    for rank, cid in enumerate(semantic_ids, 1):
+        fused[cid] += 1 / (RRF_K + rank)
+    for rank, cid in enumerate(bm25_order, 1):
+        fused[cid] += 1 / (RRF_K + rank)
+
+    by_id = dict(zip(semantic_ids, semantic_results))
+    best = sorted(fused, key=fused.get, reverse=True)[:top_k]
+    return [by_id[cid] for cid in best]
 
 
 def index_exists(corpus: str | None = None, variant: str = "default") -> bool:

@@ -34,7 +34,7 @@ CHUNK_OVERLAP = 120     # characters shared between neighbouring chunks
 # ─── Retrieval (Milestone 4) ─────────────────────────────────────────────────
 
 TOP_K = 3               # how many chunks to pull back per question
-
+HYBRID = True
 # The relevance gate. If the best chunk is further away than this, the system
 # refuses to answer instead of handing the model thin material.
 #
